@@ -73,7 +73,11 @@ Detective Wickham reaches out to you...
 #| label: find relevant crime scenes
 relevant_crime <- crime_scene_report|>
   filter(type == 'murder') |>
-  filter(city == "SQL City")
+  filter(city == "SQL City") |>
+  select(description) |>
+  distinct(description) |>
+  slice_tail() |>
+  print()
   
 ```
 
