@@ -1,0 +1,167 @@
+---
+title: "Lab 7: Murder in SQL City"
+author: "Kate OBrien"
+date: "`r Sys.Date()`"
+---
+For this lab, you will be joining and filtering related data sets to solve a murder mystery!
+
+# Part 1: GitHub Workflow
+
+At the top of the document (in the YAML) there is an `author` line that says 
+`"Your name here!"`. Change this to be your name and save your file either by
+clicking on the blue floppy disk or with a shortcut (command / control + s). 
+
+Be sure to [commit the files to your repo](https://happygitwithr.com/existing-github-first#stage-and-commit). 
+
+Let's get started!
+
+
+# Part 2: Some Words of Advice
+
+-   Set chunk options carefully.
+
+-   Make sure you don't print out more output than you need.
+
+-   Make sure you don't assign more objects than necessary---avoid "object junk"
+in your environment.
+
+-   Make your code readable and nicely formatted.
+
+-   Think through your desired result **before** writing any code.
+
+# Part 3: Finding the Killer
+
+Northwestern University's Knight Lab wanted to help sharpen users' database
+skills, so they created a murder mystery. Can you solve this crime in SQL City??
+
+The relational data you will be working with contains tables with different
+pieces of information pertinent to the crime - people, social media check-ins,
+driver's licenses, crime scene reports, police interviews, and more!
+
+
+## Access the Data
+
+This code chunk will read in **all** of the tables of data for you. Don't modify or
+remove this! Take some time to look at each file type so that 
+
+```{r}
+#| message: false
+#| warning: false
+#| label: read-in-data
+
+library(tidyverse)
+
+# If purrr is not detected, install the package
+if (!"purrr" %in% installed.packages()) install.packages("purrr")
+
+source("https://raw.githubusercontent.com/jcanner/stat_210_2025_website/main/labs/instructions/lab-7-setup.R")
+```
+
+## Solve the Crime
+
+### Crime Scene Report
+
+Detective Wickham reaches out to you...
+
+> A crime has taken place and I need your help! There was a murder in SQL City sometime on January 15, 2018. Could you retrieve the crime scene report from the police department’s database and follow the clues to find the person responsible for the murder?!
+
+
+**Step 1: Find the police report in `crime_scene_report`. Then used the information in the report to move on to the next data source based on the information learned.**
+##Making a 'Relevant Crime' Data Set.
+```{r}
+# Code for looking at the relevant crime scene report.
+#| label: find relevant crime scenes
+relevant_crime <- crime_scene_report|>
+  filter(type == 'murder') |>
+  filter(city == "SQL City")
+  
+```
+
+
+
+
+**Next Steps: Follow the evidence to the person responsible for the murder, building a report as you go.**
+There are accomplices, some knowingly and some unknowingly, but there is only one mastermind.
+
+##Find witnesses
+
+```{r}
+#| label: find people 'Annabel'
+person |>
+  filter(address_street_name == "Franklin Ave") |>
+  filter(str_detect(name, "Annabel")) #https://evoldyn.gitlab.io/evomics-2018/ref-sheets/R_strings.pdf
+
+```
+
+```{r}
+#| label: find Northwestern Dr resident
+
+person |>
+  filter(address_street_name == "Northwestern Dr") |>
+  arrange(desc(address_number)) |>
+  slice_head(n = 1)
+```
+
+##Find interviews from witnesses
+```{r}
+#| label: Witness interviews
+
+interview |>
+  filter(person_id %in% c("14887", 
+                          "16371"))
+```
+
+## Find info about suspect
+> Given the info that our suspect had a "Get Fit Now  Gym" bag with a member number that started with 48z and license plate that has H42W, and that he was at the gym on Jan 9th, I need to manipulate the get fit now check ins, member numbers, and drivers' licenses to find a suspect
+
+```{r}
+#| label: Find leads for suspect
+gfn_membership_info <- rename(get_fit_now_check_in, 
+                              id = membership_id)|>
+left_join(get_fit_now_member, 
+          get_fit_now_check_in, 
+          by = "id")
+
+gfn_membership_info |>
+  mutate(check_in_date = ymd(check_in_date)) |>
+  filter(check_in_date == "2018-01-09") |>
+  filter(str_detect(id, "48Z"))
+
+```
+
+```{r}
+#| label: Find license IDs/driver's info about people found above
+drivers_license <- drivers_license |>
+  rename(license_id = id)
+
+person_license <- left_join(drivers_license, 
+                            person)
+
+person_license |>
+  select(plate_number, 
+         name) |>
+  filter(str_detect(plate_number, 
+                    "H42W")) |>
+  filter(name == "Jeremy Bowers")
+
+```
+
+
+
+Solve the murder mystery, showing **all of your work in this document**. Your
+document and code must be well organized, easy to follow, and reproducible.
+
++ Use headers and written descriptions to indicate what you are doing.
++ Use `dplyr` verbs and `join` functions rather than just looking through the
+tables manually. Functions from `stringr` and `lubridate` will also be useful.
++ Use good code formatting practices.
++ Comment your code.
++ Cite any external sources you use to solve the mystery.
+
+
+
+::: callout-note
+## And the final suspect is...
+
+*Jeremy Bowers*
+:::
